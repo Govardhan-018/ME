@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>J·A·R·V·I·S OS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Share+Tech+Mono&display=swap');
+
+    /* CSS Variables for Theme */
+    :root {
+      --bg-dark: #02060f;
+      --cyan: #00b4ff;
+      --neon-green: #00ff88;
+      --amber: #ff9f1c;
+      --text-light: #c8e8ff;
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-sans: 'Exo 2', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-light);
+      font-family: var(--font-sans);
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+      display: grid;
+      grid-template-columns: 180px 1fr 160px;
+      grid-template-rows: 40px 1fr 24px;
+      grid-template-areas:
+        "title title title"
+        "left center right"
+        "status status status";
+      border: 1px solid rgba(0, 180, 255, 0.2);
+    }
+
+    /* Grid Background */
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: 
+        linear-gradient(rgba(0, 180, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 180, 255, 0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      z-index: -2;
+    }
+
+    /* Scanline Overlay */
+    body::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15),
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* Corner Decorators */
+    .corner {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--cyan);
+      z-index: 100;
+    }
+    .corner.tl { top: 4px; left: 4px; border-right: none; border-bottom: none; }
+    .corner.tr { top: 4px; right: 4px; border-left: none; border-bottom: none; }
+    .corner.bl { bottom: 4px; left: 4px; border-right: none; border-top: none; }
+    .corner.br { bottom: 4px; right: 4px; border-left: none; border-top: none; }
+
+    /* Title Bar */
+    #title-bar {
+      grid-area: title;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 15px;
+      -webkit-app-region: drag;
+      border-bottom: 1px solid rgba(0, 180, 255, 0.2);
+      background: rgba(0, 180, 255, 0.05);
+    }
+
+    .title-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .app-name {
+      font-family: var(--font-mono);
+      color: var(--cyan);
+      font-size: 16px;
+      letter-spacing: 2px;
+      font-weight: bold;
+    }
+
+    .subtitle {
+      font-size: 10px;
+      color: rgba(200, 232, 255, 0.6);
+      letter-spacing: 1px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: var(--neon-green);
+      font-family: var(--font-mono);
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--neon-green);
+      border-radius: 50%;
+      box-shadow: 0 0 5px var(--neon-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--neon-green); }
+      50% { opacity: 0.3; box-shadow: 0 0 2px var(--neon-green); }
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+      -webkit-app-region: no-drag;
+    }
+
+    .win-btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+      outline: none;
+    }
+    .win-btn.close { background-color: #ff5f56; }
+    .win-btn.minimize { background-color: #ffbd2e; }
+    .win-btn.maximize { background-color: #27c93f; }
+    .win-btn:hover { opacity: 0.8; }
+
+    /* Shared Panel Styles */
+    .panel {
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .section-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--cyan);
+      letter-spacing: 1px;
+      border-bottom: 1px dashed rgba(0, 180, 255, 0.3);
+      padding-bottom: 4px;
+      margin-bottom: 5px;
+    }
+
+    .card {
+      background: rgba(0, 20, 40, 0.4);
+      border: 1px solid rgba(0, 180, 255, 0.15);
+      padding: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 2px;
+      background: var(--cyan);
+      transform: translateX(-100%);
+      animation: scanline 3s linear infinite;
+    }
+
+    @keyframes scanline {
+      0% { transform: translateX(-100%); }
+      50% { transform: translateX(100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* Left Panel */
+    #left-panel {
+      grid-area: left;
+      border-right: 1px solid rgba(0, 180, 255, 0.1);
+    }
+
+    .gauge-container {
+      position: relative;
+      width: 100%;
+      height: 90px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .gauge-text {
+      position: absolute;
+      top: 40px;
+      text-align: center;
+    }
+
+    .gauge-value {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      color: var(--cyan);
+      text-shadow: 0 0 5px rgba(0, 180, 255, 0.5);
+    }
+    .gauge-label {
+      font-size: 8px;
+      color: rgba(200, 232, 255, 0.6);
+      letter-spacing: 1px;
+    }
+    
+    .gauge-markers {
+      position: absolute;
+      bottom: 5px;
+      width: 120px;
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 8px;
+      color: rgba(0, 180, 255, 0.5);
+    }
+
+    .meter-row {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      margin-bottom: 4px;
+    }
+
+    .meter-bar-bg {
+      height: 4px;
+      background: rgba(0, 180, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    
+    .meter-bar-fill {
+      height: 100%;
+    }
+    .mem-fill { background: linear-gradient(90deg, #005522, var(--neon-green)); width: 42%; }
+    .vec-fill { background: linear-gradient(90deg, #884400, var(--amber)); width: 83%; }
+
+    .agent-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+    }
+    
+    .agent-dot.active { background: var(--neon-green); box-shadow: 0 0 5px var(--neon-green); animation: pulse 1.5s infinite; }
+    .agent-dot.idle { background: rgba(0, 180, 255, 0.3); box-shadow: none; animation: none; }
+
+    /* Center Panel */
+    #center-panel {
+      grid-area: center;
+      display: flex;
+      flex-direction: column;
+      padding: 15px;
+      gap: 15px;
+    }
+
+    .orb-section {
+      height: 120px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+    }
+
+    .orb-info {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: rgba(200, 232, 255, 0.7);
+    }
+    .orb-info span { color: var(--cyan); }
+
+    .orb-container {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid transparent;
+    }
+    .ring-1 {
+      width: 98px; height: 98px;
+      border-top: 1px solid var(--cyan);
+      border-bottom: 1px solid var(--cyan);
+      animation: spin 8s linear infinite;
+    }
+    .ring-2 {
+      width: 80px; height: 80px;
+      border-left: 1px solid var(--neon-green);
+      border-right: 1px solid rgba(0, 255, 136, 0.3);
+      animation: spin-reverse 6s linear infinite;
+    }
+    .ring-3 {
+      width: 62px; height: 62px;
+      border: 1px dashed var(--cyan);
+      animation: spin 4s linear infinite;
+    }
+
+    .orb-core {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #0099dd, #003366, #000d1a);
+      box-shadow: 0 0 15px var(--cyan);
+      animation: core-pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
+    @keyframes core-pulse {
+      0%, 100% { box-shadow: 0 0 10px var(--cyan), inset 0 0 10px rgba(0, 180, 255, 0.5); }
+      50% { box-shadow: 0 0 25px var(--cyan), inset 0 0 20px rgba(0, 180, 255, 0.8); }
+    }
+
+    .terminal {
+      flex: 1;
+      background: rgba(0, 10, 25, 0.7);
+      border: 1px solid rgba(0, 180, 255, 0.3);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      box-shadow: inset 0 0 20px rgba(0, 180, 255, 0.05);
+    }
+
+    .term-header {
+      font-size: 9px;
+      color: rgba(0, 180, 255, 0.5);
+      border-bottom: 1px solid rgba(0, 180, 255, 0.2);
+      padding-bottom: 5px;
+      margin-bottom: 10px;
+    }
+
+    .term-content {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    /* Custom Scrollbar for Terminal */
+    .term-content::-webkit-scrollbar { width: 4px; }
+    .term-content::-webkit-scrollbar-thumb { background: rgba(0, 180, 255, 0.4); }
+
+    .msg-user { color: #fff; }
+    .msg-user .prefix { color: rgba(0, 180, 255, 0.6); margin-right: 8px; }
+    
+    .msg-jarvis { color: var(--text-light); }
+    .msg-jarvis .prefix { color: var(--cyan); margin-right: 8px; text-shadow: 0 0 5px var(--cyan); }
+
+    .term-input-row {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      color: var(--cyan);
+    }
+    .cursor {
+      display: inline-block;
+      width: 6px;
+      height: 12px;
+      background-color: var(--cyan);
+      margin-left: 4px;
+      animation: blink 0.8s steps(2, start) infinite;
+    }
+    @keyframes blink { to { visibility: hidden; } }
+
+    /* Right Panel */
+    #right-panel {
+      grid-area: right;
+      border-left: 1px solid rgba(0, 180, 255, 0.1);
+    }
+
+    .hex-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 2px;
+      margin-bottom: 15px;
+    }
+    .hex-cell {
+      aspect-ratio: 1;
+      background: rgba(0, 180, 255, 0.05);
+      border: 1px solid rgba(0, 180, 255, 0.1);
+      transition: all 0.5s ease;
+    }
+    .hex-cell.active { background: rgba(0, 180, 255, 0.4); border-color: var(--cyan); box-shadow: 0 0 8px rgba(0, 180, 255, 0.5); }
+    .hex-cell.hot { background: rgba(255, 159, 28, 0.4); border-color: var(--amber); box-shadow: 0 0 8px rgba(255, 159, 28, 0.5); }
+
+    .hotkey {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: rgba(200, 232, 255, 0.7);
+      margin-bottom: 4px;
+    }
+    .hotkey span { color: var(--amber); }
+
+    .chart-container {
+      height: 60px;
+      border-bottom: 1px solid rgba(0, 180, 255, 0.2);
+      border-left: 1px solid rgba(0, 180, 255, 0.2);
+      margin-top: 5px;
+      position: relative;
+    }
+    
+    /* Status Bar */
+    #status-bar {
+      grid-area: status;
+      border-top: 1px solid rgba(0, 180, 255, 0.2);
+      background: rgba(0, 20, 40, 0.6);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 15px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 1px;
+    }
+
+    .status-item { color: rgba(0, 180, 255, 0.6); }
+    .status-item.good { color: var(--neon-green); }
+
+  </style>
+</head>
+<body>
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <!-- TITLE BAR -->
+  <div id="title-bar">
+    <div class="title-left">
+      <div class="app-name">J·A·R·V·I·S OS</div>
+      <div class="subtitle">COGNITIVE ENGINE ONLINE · BUILD 0.9.4</div>
+      <div class="status-badge"><div class="dot"></div>NOMINAL</div>
+    </div>
+    <div class="window-controls">
+      <button class="win-btn minimize" id="btn-minimize"></button>
+      <button class="win-btn maximize" id="btn-maximize"></button>
+      <button class="win-btn close" id="btn-close"></button>
+    </div>
+  </div>
+
+  <!-- LEFT PANEL -->
+  <div id="left-panel" class="panel">
+    <div>
+      <div class="section-title">SYSTEM TELEMETRY</div>
+      <div class="gauge-container">
+        <svg width="140" height="70" viewBox="0 0 140 70">
+          <defs>
+            <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#0044aa" />
+              <stop offset="100%" stop-color="#00c8ff" />
+            </linearGradient>
+          </defs>
+          <path d="M 10 60 A 60 60 0 0 1 130 60" fill="none" stroke="rgba(0,180,255,0.08)" stroke-width="8" stroke-linecap="round"/>
+          <path d="M 10 60 A 60 60 0 0 1 130 60" fill="none" stroke="url(#arcGrad)" stroke-width="8" stroke-linecap="round" stroke-dasharray="188" stroke-dashoffset="62"/>
+        </svg>
+        <div class="gauge-text">
+          <div class="gauge-value">67%</div>
+          <div class="gauge-label">CPU LOAD</div>
+        </div>
+        <div class="gauge-markers">
+          <span>0</span><span>100</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="meter-row">
+        <span style="color: var(--neon-green)">42%</span>
+        <span style="color: rgba(200,232,255,0.6)">6.8 / 16 GB</span>
+      </div>
+      <div class="meter-bar-bg">
+        <div class="meter-bar-fill mem-fill"></div>
+      </div>
+      <div class="section-title" style="border:none; margin-top:4px; margin-bottom:0">MEMORY ALLOC</div>
+    </div>
+
+    <div class="card">
+      <div class="meter-row">
+        <span style="color: var(--amber)">2,847 FACTS</span>
+      </div>
+      <div class="meter-bar-bg">
+        <div class="meter-bar-fill vec-fill"></div>
+      </div>
+      <div class="section-title" style="border:none; margin-top:4px; margin-bottom:0">VECTOR INDEX</div>
+    </div>
+
+    <div>
+      <div class="section-title">ACTIVE AGENTS</div>
+      <div class="agent-row"><div class="dot agent-dot active"></div>RESEARCH</div>
+      <div class="agent-row"><div class="dot agent-dot idle"></div>TODO</div>
+      <div class="agent-row"><div class="dot agent-dot idle"></div>NOTES</div>
+      <div class="agent-row"><div class="dot agent-dot idle"></div>MEMORY</div>
+      <div class="agent-row"><div class="dot agent-dot idle"></div>CALENDAR</div>
+      <div class="agent-row"><div class="dot agent-dot idle"></div>MAIL</div>
+    </div>
+  </div>
+
+  <!-- CENTER PANEL -->
+  <div id="center-panel">
+    <div class="orb-section">
+      <div class="orb-info text-right">
+        <div>STATUS / <span>IDLE</span></div>
+        <div>PROVIDER / <span>OLLAMA</span></div>
+      </div>
+      
+      <div class="orb-container">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+        <div class="orb-core"></div>
+      </div>
+
+      <div class="orb-info">
+        <div>UPTIME / <span id="uptime-display">04:22:17</span></div>
+        <div>LOCAL MODEL / <span style="color: var(--neon-green)">qwen2.5:7b</span></div>
+      </div>
+    </div>
+
+    <div class="terminal">
+      <div class="term-header">JARVIS COGNITIVE TERMINAL v4.1</div>
+      <div class="term-content">
+        <div class="msg-jarvis"><span class="prefix">JARVIS ▸</span>System initialized. All sub-routines running nominally.</div>
+        <div class="msg-user"><span class="prefix">&gt; USER ❯</span>Run diagnostic on memory buffer.</div>
+        <div class="msg-jarvis"><span class="prefix">JARVIS ▸</span>Diagnostic complete. STM buffer at 70% capacity. Vector database holds 2,847 retrieved facts. No anomalies detected.</div>
+        <div class="msg-user"><span class="prefix">&gt; USER ❯</span>Awaiting new directives...</div>
+      </div>
+      <div class="term-input-row">
+        <span>INPUT ❯</span>
+        <span class="cursor"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div id="right-panel" class="panel">
+    <div>
+      <div class="section-title">VECTOR ACTIVITY</div>
+      <div class="hex-grid" id="hex-grid">
+        <!-- Generates 25 cells via JS -->
+      </div>
+    </div>
+
+    <div class="card" style="padding: 8px">
+      <div class="hotkey"><span>⌃ SPACE</span> → TOGGLE HUD</div>
+      <div class="hotkey"><span>ALT J</span> → PUSH TO TALK</div>
+    </div>
+
+    <div>
+      <div class="section-title">LTM SIMILARITY</div>
+      <div class="chart-container">
+        <svg width="100%" height="100%" viewBox="0 0 100 40" preserveAspectRatio="none">
+          <polyline fill="rgba(0,180,255,0.04)" stroke="none" points="0,40 0,30 20,25 40,35 60,10 80,15 100,5 100,40" />
+          <polyline fill="none" stroke="var(--cyan)" stroke-width="1.5" points="0,30 20,25 40,35 60,10 80,15 100,5" />
+          <circle cx="60" cy="10" r="2" fill="var(--cyan)" />
+          <line x1="60" y1="10" x2="60" y2="40" stroke="rgba(0,180,255,0.3)" stroke-width="1" stroke-dasharray="2,2" />
+          <text x="63" y="14" fill="var(--cyan)" font-size="6" font-family="var(--font-mono)">0.94</text>
+        </svg>
+      </div>
+    </div>
+
+    <div style="margin-top: auto">
+      <div class="meter-row">
+        <span>TURNS LOADED</span>
+        <span>14/20</span>
+      </div>
+      <div class="meter-bar-bg" style="height: 2px">
+        <div class="meter-bar-fill" style="width: 70%; background: var(--cyan)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div id="status-bar">
+    <div class="status-item good">● BACKEND ONLINE</div>
+    <div class="status-item good">● OLLAMA HEALTHY</div>
+    <div class="status-item">LTM: QDRANT · 2847 VECTORS</div>
+    <div class="status-item good">● VOICE READY</div>
+    <div class="status-item" id="live-clock">00:00:00 IST</div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    // Window Controls IPC
+    document.getElementById('btn-minimize').addEventListener('click', () => {
+      ipcRenderer.send('win-minimize');
+    });
+    document.getElementById('btn-maximize').addEventListener('click', () => {
+      ipcRenderer.send('win-maximize');
+    });
+    document.getElementById('btn-close').addEventListener('click', () => {
+      ipcRenderer.send('win-close');
+    });
+
+    // Live Clock Update
+    function updateClock() {
+      const now = new Date();
+      // Using en-IN locale to get Indian standard time formats easily or just format manually
+      const options = { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' };
+      const timeString = now.toLocaleTimeString('en-IN', options);
+      document.getElementById('live-clock').textContent = timeString + ' IST';
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Uptime Counter
+    let uptimeSeconds = 15737; // Start at 04:22:17
+    function updateUptime() {
+      uptimeSeconds++;
+      const h = Math.floor(uptimeSeconds / 3600).toString().padStart(2, '0');
+      const m = Math.floor((uptimeSeconds % 3600) / 60).toString().padStart(2, '0');
+      const s = (uptimeSeconds % 60).toString().padStart(2, '0');
+      document.getElementById('uptime-display').textContent = `${h}:${m}:${s}`;
+    }
+    setInterval(updateUptime, 1000);
+    updateUptime();
+
+    // Hex Grid Animation
+    const hexGrid = document.getElementById('hex-grid');
+    const NUM_CELLS = 25;
+    
+    // Initialize cells
+    for(let i=0; i<NUM_CELLS; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'hex-cell';
+      hexGrid.appendChild(cell);
+    }
+    const cells = document.querySelectorAll('.hex-cell');
+
+    function animateHexGrid() {
+      cells.forEach(cell => {
+        cell.className = 'hex-cell'; // reset
+        const rand = Math.random();
+        if (rand < 0.28) {
+          cell.classList.add('active'); // cyan
+        } else if (rand > 0.94) {
+          cell.classList.add('hot'); // amber
+        }
+      });
+    }
+    setInterval(animateHexGrid, 1200);
+    animateHexGrid();
+  </script>
+</body>
+</html>

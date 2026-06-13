@@ -1,0 +1,30 @@
+# Environments
+.env
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node / Electron
+node_modules/
+dist/
+out/
+jarvis-electron/node_modules/
+jarvis-electron/dist/
+jarvis-electron/out/
+
+# Secrets
+credentials.json
+token.json
+
+# Text outputs / Logs
+out.txt
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
