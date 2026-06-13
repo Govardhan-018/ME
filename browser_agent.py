@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import re
 import sys
 import textwrap
@@ -7,7 +8,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 import requests
+from dotenv import load_dotenv
 from duckduckgo_search import DDGS
+
+load_dotenv()
 
 try:
     import trafilatura
@@ -17,8 +21,8 @@ except ImportError:
 
 from bs4 import BeautifulSoup
 
-OLLAMA_BASE_URL   = "http://localhost:11434"
-DEFAULT_MODEL     = "llama3.2:latest"
+OLLAMA_BASE_URL   = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+DEFAULT_MODEL     = os.getenv("OLLAMA_DEFAULT_MODEL", "llama3.2:latest")
 DEFAULT_N_RESULTS = 5
 FETCH_TIMEOUT     = 10          
 MAX_PAGE_CHARS    = 4000        

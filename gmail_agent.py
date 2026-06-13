@@ -1,11 +1,13 @@
 import argparse
 import json
+import os
 import re
 import sys
 import textwrap
 from datetime import datetime, timezone
 from typing import Any
 import requests
+from dotenv import load_dotenv
 from gmail_pull import (
     get_gmail_service,
     get_unread_emails,
@@ -14,9 +16,11 @@ from gmail_pull import (
     get_emails_by_sender,
 )
 
-OLLAMA_BASE_URL = "http://localhost:11434"
-INTENT_MODEL    = "gemma3:270m"
-ANALYSIS_MODEL  = "llama3.2:latest"
+load_dotenv()
+
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+INTENT_MODEL    = os.getenv("OLLAMA_INTENT_MODEL", "gemma3:270m")
+ANALYSIS_MODEL  = os.getenv("OLLAMA_ANALYSIS_MODEL", "llama3.2:latest")
 
 def ollama_chat(messages: list[dict], model: str) -> str:
     payload = {
