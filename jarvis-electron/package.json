@@ -1,20 +1,43 @@
 {
-  "name": "jarvis-hud",
-  "version": "0.9.4",
-  "description": "JARVIS / Iron Man style AI HUD desktop application",
-  "main": "main.js",
+  "name": "jarvis-os",
+  "version": "1.0.0",
+  "description": "J.A.R.V.I.S — a living AI operating system. Electron · React · TypeScript · Tailwind · Framer Motion.",
+  "author": "Vipul",
+  "license": "MIT",
+  "main": "./out/main/index.js",
   "scripts": {
-    "start": "electron ."
+    "dev": "electron-vite dev",
+    "dev:web": "vite --config vite.web.config.mts",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "start": "electron-vite preview",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "dist:win": "electron-vite build && electron-builder --win"
   },
-  "keywords": [
-    "jarvis",
-    "electron",
-    "hud",
-    "dashboard"
-  ],
-  "author": "Cognitive Engine",
-  "license": "ISC",
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.1.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.11.17",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.5.5",
+    "zustand": "^5.0.1"
+  },
   "devDependencies": {
-    "electron": "^28.0.0"
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
   }
 }

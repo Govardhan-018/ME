@@ -1,20 +1,21 @@
 import argparse
 import json
-import os
 import re
 import sys
 import textwrap
 from datetime import datetime, timezone
 from typing import Any
 import requests
-from dotenv import load_dotenv
-from gmail_pull import (
+from core.tools.gmail_pull import (
     get_gmail_service,
     get_unread_emails,
     get_emails_by_date,
     get_latest_emails,
     get_emails_by_sender,
 )
+
+import os
+from dotenv import load_dotenv
 
 load_dotenv()
 

@@ -350,7 +350,7 @@ def analyze_files(files: list[dict], task: str, model: str, user_command: str) -
     except json.JSONDecodeError as exc:
         raise ValueError(f"Ollama returned invalid JSON for file analysis:\n{raw}") from exc
 
-def run_agent(user_command: str, model: str) -> dict[str, Any]:
+def run_agent(user_command: str, model: str = DEFAULT_MODEL) -> dict[str, Any]:
     print(f"[Agent] Parsing intent for: {user_command!r}")
     intent = parse_intent(user_command, model)
     print(f"[Agent] Intent -> {json.dumps(intent, indent=2)}")
