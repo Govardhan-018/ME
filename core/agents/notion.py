@@ -30,6 +30,7 @@ from core.tools.notion_tool import (
     NotionClient,
     markdown_to_blocks,
     summarise_page,
+    _clean_id,
     _extract_title,
 )
 
@@ -39,6 +40,14 @@ OLLAMA_BASE    = "http://localhost:11434"
 INTENT_MODEL   = "gemma3:1b"        # fast, small — great for intent parsing
 CONTENT_MODEL  = "llama3.2:latest"  # generates rich page content
 # Upgrade intent to gemma3:12b later for better accuracy (ollama pull gemma3:12b)
+
+# ── Default home for parentless page creation ────────────────────────────────
+# Without this, "create X" used to nest inside the LAST page JARVIS made, so
+# every new page burrowed one level deeper. New pages now land as siblings under
+# one stable hub instead. Point it anywhere by setting NOTION_HOME_PAGE_ID, or
+# rename the auto-created hub with NOTION_HOME_PAGE_TITLE.
+HOME_PAGE_ID    = os.environ.get("NOTION_HOME_PAGE_ID") or os.environ.get("NOTION_PARENT_ID")
+HOME_PAGE_TITLE = os.environ.get("NOTION_HOME_PAGE_TITLE", "JARVIS")
 
 # ── Ollama helper ─────────────────────────────────────────────────────────────
 
@@ -87,6 +96,9 @@ _INTENT_SYSTEM = textwrap.dedent("""
       max_results    (integer)        — how many results to show for search/list (default 5)
 
     Rules:
+    - Set parent_title ONLY when the user explicitly names a page or database to
+      create inside (e.g. "in my Travel page"). If no parent is named, parent_title
+      MUST be null — never guess one or reuse a page mentioned earlier.
     - If the user says "add", "append", "write to" → action = "append"
     - If the user says "create", "make", "build", "write a new" → action = "create_page"
     - If the user says "show", "list", "find", "search" → action = "search" or "list"
@@ -156,6 +168,82 @@ def generate_content(
     return _ollama(messages, model, temperature=0.6)
 
 
+# ── Default-parent resolution ─────────────────────────────────────────────────
+
+def _find_exact_page(client: NotionClient, title: str) -> dict | None:
+    """Exact (case-insensitive) title match only — no substring soft-match, so the
+    hub never accidentally resolves to a child page like 'JARVIS — Japan Trip'.
+    If duplicate hubs exist, return the OLDEST so everything converges on one."""
+    target = title.lower().strip()
+    matches = [
+        r for r in client.search(query=title, filter_type="page")
+        if _extract_title(r).lower().strip() == target
+    ]
+    if not matches:
+        return None
+    matches.sort(key=lambda r: r.get("created_time", ""))  # oldest = canonical hub
+    return matches[0]
+
+
+def _stable_anchor_id(client: NotionClient) -> str | None:
+    """A stable place to create the hub under: the oldest top-level page, else the
+    oldest visible page. 'Oldest' never resolves to a page JARVIS just created."""
+    top = client.list_top_level_pages(max_results=10)
+    if top:
+        return top[0]["id"]
+    pages = client.search(query="", filter_type="page", max_results=50)
+    if pages:
+        pages.sort(key=lambda p: p.get("created_time", ""))
+        return pages[0]["id"]
+    return None
+
+
+# Process cache: once resolved, reuse the same hub id for the rest of the run so
+# rapid back-to-back creates can't each spawn a duplicate hub before Notion's
+# search index catches up. Cleared on restart (by then the hub is indexed).
+_RESOLVED_HOME_ID: str | None = None
+
+
+def resolve_home_parent(client: NotionClient, *, use_cache: bool = True) -> str | None:
+    """
+    Resolve the STABLE parent that parentless new pages should live under.
+
+    Order: (0) process cache, (1) NOTION_HOME_PAGE_ID env, (2) an existing hub
+    page named HOME_PAGE_TITLE, (3) create that hub once under a stable anchor.
+    Never returns "the most recently edited page" — that recency fallback is what
+    made every new page nest inside the previous one.
+    """
+    global _RESOLVED_HOME_ID
+    if use_cache and _RESOLVED_HOME_ID:
+        return _RESOLVED_HOME_ID
+
+    if HOME_PAGE_ID:
+        _RESOLVED_HOME_ID = _clean_id(HOME_PAGE_ID)
+        return _RESOLVED_HOME_ID
+
+    hub = _find_exact_page(client, HOME_PAGE_TITLE)
+    if hub:
+        _RESOLVED_HOME_ID = hub["id"]
+        return _RESOLVED_HOME_ID
+
+    anchor = _stable_anchor_id(client)
+    if not anchor:
+        return None  # nothing shared with the integration yet
+
+    print(f"  [JARVIS] Creating Notion hub page '{HOME_PAGE_TITLE}' for new pages…")
+    hub = client.create_page(
+        title=HOME_PAGE_TITLE,
+        blocks=[B.callout(
+            "Home for pages JARVIS creates. New pages land here as siblings.",
+            emoji="🤖",
+        )],
+        parent_page_id=anchor,
+        icon_emoji="🤖",
+    )
+    _RESOLVED_HOME_ID = hub["id"]
+    return _RESOLVED_HOME_ID
+
+
 # ── Stage 3: Action executor ──────────────────────────────────────────────────
 
 def execute_intent(
@@ -189,11 +277,10 @@ def execute_intent(
                     return execute_intent(intent, client, content_model)
 
         if not parent_id:
-            # fallback: search workspace root — pick first page we can see
-            pages = client.list_workspace_pages(max_results=3)
-            if pages:
-                parent_id = pages[0]["id"]
-            else:
+            # No explicit parent → use the stable hub, NOT the most-recent page.
+            # (Picking the most-recent page is what made pages nest endlessly.)
+            parent_id = resolve_home_parent(client)
+            if not parent_id:
                 return {"error": "No parent page found. Share at least one page with your Notion integration."}
 
         # Generate content

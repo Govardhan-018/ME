@@ -1,0 +1,1 @@
+JARVIS MCP bus works end-to-end.

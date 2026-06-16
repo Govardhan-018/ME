@@ -404,6 +404,8 @@ flowchart LR
 ### 7.4 Caution
 MCP is powerful but you are responsible for trust. Vet third-party servers (they run with whatever creds you give them). Pin versions. Treat tool descriptions from untrusted servers as potential prompt-injection vectors (§15.6).
 
+> **UPDATE — 2026-06-16: the MCP bus landed.** `core/mcp/` now implements the design's backbone (it had been deferred while the build went wide on agents/voice/memory). The Agent Core is an **MCP client**: `client.py` (the `MCPManager` — a dedicated background asyncio loop where each server owns its own task, so the sync orchestrator can use long-lived stdio sessions) connects to servers declared in `servers.yaml`, discovers their tools, and builds a flat registry. The official **filesystem server** (npx, stdio) ships enabled, **scoped to the workspace sandbox** — which simultaneously satisfies the §13.1 "allowlisted roots" rule. Crucially, every tool call flows through the **Permission & Audit Gateway (§15)** with a *per-tool* risk tier (`classify_tool` → read/write/irreversible/outward), which is the §6.2/§14.3 **per-call granularity** MCP was supposed to unlock — the gateway now gates the *tool*, not just the whole agent. A generic `agents/mcp_agent.py` (single agent, MCP tools — the §8 pattern) selects + runs one tool per turn; the orchestrator gained an `mcp` domain and `/api/mcp{,/tools,/call}` endpoints (the raw call endpoint is gated too). Verified: `scripts/test_mcp.py` 37/37 — tier mapping, config/`${VAR}` expansion, result normalization, graceful degradation, orchestrator wiring, and a **live filesystem connect + gateway-gated write/read** in the sandbox. **Honest scope / next:** (1) **stdio transport only** — remote **HTTP/SSE** servers (Notion, Google) are the documented seam in `servers.yaml` but not wired yet; (2) the read-only `files` agent is **not yet migrated** onto the filesystem server (kept as fallback); (3) consuming official Notion/Google/git servers replaces the hand-rolled agents incrementally (§7.3 "consume first"); (4) the LLM tool-selection + router→`mcp` link depends on local Ollama quality (a frontier router is the lever, §16).
+
 ---
 
 ## 8. Multi-Agent vs Single-Agent Analysis
@@ -609,6 +611,10 @@ flowchart LR
 
 ### 14.3 Safety
 Code execution runs in a **scoped working dir**; destructive git ops (`reset --hard`, force-push) are `irreversible`→confirm; never commit/push or touch secrets without explicit approval.
+
+> **TODO (gateway integration) — added 2026-06-14.** A first coding agent exists (`core/agents/coder.py`: generate / edit / read / run). Its safety today is *interim*: writes/edits/runs are sandboxed to `workspace/` (`_safe_path` rejects escapes), execution is gated by explicit intent (`run_after`) + an env kill switch (`JARVIS_CODER_NO_RUN=1`), with a 30s timeout — but it does **not yet pass through the Permission & Audit Gateway (§15.1)**. When the gateway lands (Phase 5), route `code.write` and `code.run` through it as `irreversible`-tier actions (confirm-by-default, audit-logged), and replace the env kill switch with the gateway's autonomy modes (§15.2). Until then, the sandbox + intent gate are the only guardrails.
+>
+> **UPDATE — 2026-06-15: gateway landed (early).** `core/security/` now implements the Permission & Audit Gateway (`gateway.guard` chokepoint, `policy` engine over `tiers`, append-only `audit` log) and the orchestrator routes **every** agent dispatch through it. The coder is classified per-command: plain write → `write` (auto in copilot, sandboxed + audited); **write-and-run → `irreversible` → confirm-by-default** with approve/deny + autonomy modes replacing the bare env kill switch. Remaining gap: gating is at **dispatch granularity** (one decision per agent call), not per-tool — precise per-call tiers arrive with the single tool-emitting agent loop (§3.1). The interim sandbox/timeout still apply underneath.
 
 ---
 

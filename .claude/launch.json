@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "jarvis",
+      "name": "jarvis-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "jarvis-electron", "run", "dev:web"],
-      "autoPort": true
+      "runtimeArgs": ["--prefix", "jarvis-web", "run", "dev", "--", "-p", "4173"],
+      "port": 4173
     }
   ]
 }

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "name": "kilometers_to_miles",
+      "description": "Converts kilometers to miles",
+      "examples": [
+        "convert 5 km to miles",
+        "how many miles are in 10 kilometers",
+        "1 km is how many miles"
+      ],
+      "file": "kilometers_to_miles.py",
+      "created": "2026-06-16T13:10:18.166596+00:00",
+      "validation": {
+        "passed": true,
+        "stage": "run",
+        "exit_code": 0,
+        "stdout": "ALL TESTS PASSED\n",
+        "stderr": ""
+      },
+      "status": "active"
+    }
+  ]
+}

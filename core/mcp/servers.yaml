@@ -1,0 +1,46 @@
+# MCP servers (§7.2) — the declared tool bus.
+#
+# Each entry is a separate child process the Agent Core connects to as an MCP
+# *client*. MCP gives the capability; the Permission & Audit Gateway (§15) still
+# decides whether any tool may actually run (per-tool risk tier, §6.2).
+#
+# Variables you can use in `command`/`args`:
+#   ${WORKSPACE}   the coder sandbox dir  (JARVIS_WORKSPACE or <project>/workspace)
+#   ${PROJECT}     the ME AI project root
+#   ${HOME}        your home directory
+#   ${ENV:NAME}    any environment variable
+#
+# Edit this file and restart the brain to add/scope/disable a server.
+# Disable the whole bus at boot with JARVIS_NO_MCP=1.
+#
+# rollout (§7.3): consume official servers first, write custom ones only for
+# bespoke needs, and keep roots tight (least privilege, §15.3).
+
+servers:
+  # Official filesystem server (npx, auto-downloaded on first run). Scoped to the
+  # sandbox root only — this IS the §13.1 "allowlisted roots" rule: JARVIS can
+  # read/write here and is blind to the rest of the disk. Add more roots by
+  # appending more absolute paths to `args`.
+  - name: filesystem
+    enabled: true
+    transport: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "${WORKSPACE}"
+    default_tier: write
+    description: "Read/write files within scoped, allowlisted roots (the sandbox)."
+
+  # --- Examples (disabled) — uncomment + add credentials to enable. -----------
+  # Remote/credentialed servers (Notion, Google) use HTTP/SSE transport and keep
+  # secrets in the server, not the prompt (§7.2, §15.3). HTTP transport is not
+  # wired in this build yet (stdio only) — these are here as the documented seam.
+  #
+  # - name: git
+  #   enabled: false
+  #   transport: stdio
+  #   command: npx
+  #   args: ["-y", "@modelcontextprotocol/server-git", "--repository", "${PROJECT}"]
+  #   default_tier: write
+  #   description: "Read repo history / status / diffs."

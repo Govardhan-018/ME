@@ -223,6 +223,20 @@ class NotionClient:
         """Return top-level pages the integration can see."""
         return self.search(query="", filter_type="page", max_results=max_results)
 
+    def list_top_level_pages(self, max_results: int = 20) -> list[dict]:
+        """
+        Pages whose parent is the workspace ROOT (true top-level), oldest first.
+
+        This is a STABLE anchor for placing new pages: unlike a recency-sorted
+        search, it never returns a page JARVIS just created (those are children
+        of another page, not workspace-level), so it can't cause the nested-page
+        drift where every new page burrows one level deeper.
+        """
+        pages = self.search(query="", filter_type="page", max_results=100)
+        top = [p for p in pages if p.get("parent", {}).get("type") == "workspace"]
+        top.sort(key=lambda p: p.get("created_time", ""))
+        return top[:max_results]
+
     def list_databases(self, max_results: int = 10) -> list[dict]:
         return self.search(query="", filter_type="database", max_results=max_results)
 

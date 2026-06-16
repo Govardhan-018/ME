@@ -21,6 +21,12 @@ jarvis-electron/out/
 credentials.json
 token.json
 
+# JARVIS datastore (SQLite memory + audit log — local, never commit)
+data/
+*.db
+*.db-wal
+*.db-shm
+
 # Text outputs / Logs
 out.txt
 *.log

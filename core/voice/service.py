@@ -136,11 +136,7 @@ def run() -> None:
         print(f"[voice] wake-word init failed: {e}")
         return
 
-    # Warm whisper so the first real command isn't slow.
-    try:
-        stt.transcribe_array(np.zeros(SR, dtype="float32"))
-    except Exception:
-        pass
+    print(f"[voice] STT backend: {stt.backend_name()}")
 
     # Greeting (shown in chat + spoken).
     _set(
