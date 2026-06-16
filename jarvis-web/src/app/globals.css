@@ -1,0 +1,173 @@
+@import "tailwindcss";
+/* ⤵ EXPERIMENTAL — Liquid Glass layer. Delete this line + liquid-glass.css to remove. */
+@import "./liquid-glass.css";
+
+/* =============================================================================
+   JARVIS OS — Design System
+   Dark luxury. Precision. Restraint. A single cyan authority accent.
+   ========================================================================== */
+@theme {
+  /* ── Surfaces ──────────────────────────────────────────────────────── */
+  --color-void: #050507;          /* the base black, faintly cool */
+  --color-void-2: #0a0b0e;        /* elevated surface */
+  --color-void-3: #101216;        /* card / panel */
+
+  /* ── Ink ───────────────────────────────────────────────────────────── */
+  --color-ink: #f4f5f7;           /* primary text */
+  --color-ink-soft: #c7cad1;      /* secondary text */
+  --color-muted: #8b919c;         /* tertiary / labels */
+  --color-faint: #565c66;         /* quietest */
+
+  /* ── Lines ─────────────────────────────────────────────────────────── */
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-line-strong: rgba(255, 255, 255, 0.14);
+
+  /* ── Accent (used with restraint — authority, not decoration) ──────── */
+  --color-accent: #38e8ff;
+  --color-accent-deep: #12aecf;
+  --color-accent-glow: rgba(56, 232, 255, 0.5);
+
+  /* ── Type ──────────────────────────────────────────────────────────── */
+  --font-display: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* ── Easing ────────────────────────────────────────────────────────── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── Layout ────────────────────────────────────────────────────────── */
+  --max-w-page: 1280px;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: auto; /* Lenis owns smooth scrolling */
+    background: var(--color-void);
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--color-void);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-void);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  /* Display type — Inter Tight, tight tracking, optical weight */
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 0.98;
+    text-wrap: balance;
+  }
+
+  /* Lenis smooth-scroll base styles */
+  html.lenis,
+  html.lenis body { height: auto; }
+  .lenis.lenis-smooth { scroll-behavior: auto !important; }
+  .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+  .lenis.lenis-stopped { overflow: hidden; }
+
+  /* thin scrollbar, in keeping with the restraint */
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 99px;
+    border: 2px solid var(--color-void);
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
+}
+
+@layer utilities {
+  /* fluid display sizes */
+  .text-hero {
+    font-size: clamp(3.25rem, 11vw, 10rem);   /* up to 160px */
+    line-height: 0.92;
+    letter-spacing: -0.045em;
+  }
+  .text-section {
+    font-size: clamp(2.25rem, 5vw, 4.5rem);    /* 36–72px */
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+  }
+  .text-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  /* the accent, applied as a soft luminous text gradient */
+  .text-accent-glow {
+    color: var(--color-accent);
+    text-shadow: 0 0 28px var(--color-accent-glow);
+  }
+
+  .lede {
+    font-size: clamp(1.075rem, 1.4vw, 1.25rem); /* 18–20px */
+    line-height: 1.6;
+    color: var(--color-ink-soft);
+  }
+
+  /* radial vignette to seat the Core in the void */
+  .vignette {
+    background:
+      radial-gradient(120% 90% at 50% 42%, transparent 0%, transparent 48%, rgba(5, 5, 7, 0.55) 78%, var(--color-void) 100%);
+  }
+
+  .hairline {
+    background: linear-gradient(90deg, transparent, var(--color-line-strong) 18%, var(--color-line-strong) 82%, transparent);
+  }
+
+  .grid-faint {
+    background-image:
+      linear-gradient(var(--color-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-line) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(circle at 50% 50%, black, transparent 72%);
+  }
+}
+
+/* LCP-safe hero entrance — transform only, so text paints at full opacity */
+@keyframes heroRise {
+  from { transform: translateY(26px); }
+  to { transform: translateY(0); }
+}
+.hero-rise {
+  animation: heroRise 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Honour reduced motion globally for CSS-driven effects */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

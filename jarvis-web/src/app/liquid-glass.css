@@ -1,0 +1,240 @@
+/* =============================================================================
+   LIQUID GLASS — experimental, fully isolated surface treatment
+   -----------------------------------------------------------------------------
+   Modeled on Apple's "Liquid Glass" material (developer.apple.com → Liquid
+   Glass / WWDC25 "Meet Liquid Glass"). The traits we emulate on the web:
+     • lensing/refraction — the background BENDS & TWISTS behind the surface
+       (SVG feTurbulence + feDisplacementMap) instead of a flat frosted blur;
+     • an illuminated, chromatic LENS EDGE that catches and splits light;
+     • ADAPTIVE tint — saturate + brightness + contrast on the backdrop so the
+       glass takes on tones from the brightness of content underneath
+       ("mimicking real colored glass"), aiding legibility/contrast;
+     • a fluid, springy response to press;
+     • two variants — REGULAR (.lg / panels: opaque, adaptive, legible over any
+       content) and CLEAR (.lg-clear: more transparent, for media-rich contexts
+       such as over the living Core, kept softly dimmed so text stays readable).
+
+   ░ HOW IT IS GATED
+   Every rule is scoped under  html[data-lg="on"].  The marker classes
+   (.lg, .lg-chip, .lg-bar, .lg-panel, .lg-accent, .lg-icon, .lg-bubble,
+   .lg-clear) do NOTHING on their own — they only come alive when this file is
+   loaded AND the gate attribute is "on". So the effect is a single switch.
+
+   ░ HOW TO REMOVE COMPLETELY (back to normal in ~4 edits)
+     1. delete this file
+     2. delete the `@import "./liquid-glass.css";` line in globals.css
+     3. remove `data-lg="on"` from <html> in app/layout.tsx
+     4. remove <LiquidGlass /> + its import in app/layout.tsx
+   The leftover marker classes on components are inert and can be ignored or
+   stripped at leisure — nothing breaks either way.
+
+   ░ WHY UNLAYERED
+   These rules sit OUTSIDE @layer so they reliably win over Tailwind's utility
+   classes (e.g. bg-void/70) on the same element. EXCEPTION: the position rule
+   lives in @layer components so Tailwind's `fixed`/`absolute` still win.
+   ========================================================================== */
+
+/* ── shared positioning (layered so Tailwind position utilities win) ──────── */
+/* Static glass surfaces need a positioning context for the ::before ring; this
+   sits in @layer components so `fixed`/`absolute` elements (slide-over panels,
+   the toggle) keep their own positioning instead of dropping into normal flow. */
+@layer components {
+  html[data-lg="on"] :is(.lg, .lg-bar, .lg-panel, .lg-accent, .lg-icon, .lg-bubble) {
+    position: relative;
+  }
+}
+
+/* ── the lens edge — an illuminated, faintly chromatic refractive rim ──────
+   Masked to a ~1px ring so it never touches the content/text inside. The cyan
+   tint at the crest + far edge fakes the way a real lens splits light. */
+html[data-lg="on"] :is(.lg, .lg-bar, .lg-panel, .lg-accent, .lg-icon, .lg-bubble)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(198, 248, 255, 0.68) 0%,
+    rgba(255, 255, 255, 0.08) 24%,
+    transparent 48%,
+    rgba(255, 255, 255, 0.04) 72%,
+    rgba(150, 226, 255, 0.32) 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── shared base glass (REGULAR variant, light surfaces) ──────────────────── */
+html[data-lg="on"] :is(.lg, .lg-bar, .lg-bubble) {
+  --lg-blur: 14px;
+  /* adaptive colored-glass tint: saturate + brightness + contrast on backdrop */
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(190%) brightness(1.1) contrast(1.05);
+  backdrop-filter: blur(var(--lg-blur)) saturate(190%) brightness(1.1) contrast(1.05);
+  background:
+    radial-gradient(130% 85% at 50% -14%, rgba(255, 255, 255, 0.16), transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  /* illuminated crest → soft top bloom → inner depth → grounding lift */
+  box-shadow:
+    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.45),
+    inset 0 7px 14px -10px rgba(255, 255, 255, 0.22),
+    inset 0 -10px 18px -12px rgba(0, 0, 0, 0.42),
+    inset 0 -1px 0.5px 0 rgba(0, 0, 0, 0.3),
+    0 8px 26px -12px rgba(0, 0, 0, 0.8);
+  transition:
+    box-shadow 0.3s var(--ease-out-expo, ease),
+    transform 0.18s var(--ease-out-expo, ease),
+    backdrop-filter 0.3s ease,
+    border-color 0.3s ease;
+}
+
+/* ── small pill (header buttons, action chips, toggle) ───────────────────── */
+html[data-lg="on"] .lg-chip {
+  --lg-blur: 12px;
+  box-shadow:
+    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.4),
+    inset 0 5px 10px -8px rgba(255, 255, 255, 0.18),
+    inset 0 -6px 10px -8px rgba(0, 0, 0, 0.35),
+    0 5px 16px -8px rgba(0, 0, 0, 0.7);
+}
+html[data-lg="on"] :is(.lg-chip, .lg-icon):hover {
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(210%) brightness(1.2) contrast(1.06);
+  backdrop-filter: blur(var(--lg-blur)) saturate(210%) brightness(1.2) contrast(1.06);
+  border-color: rgba(255, 255, 255, 0.26);
+  box-shadow:
+    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.5),
+    inset 0 6px 12px -8px rgba(255, 255, 255, 0.24),
+    inset 0 -6px 10px -8px rgba(0, 0, 0, 0.35),
+    0 10px 26px -10px rgba(0, 0, 0, 0.85);
+}
+/* fluid, springy press — a brief light bloom as the glass compresses */
+html[data-lg="on"] :is(.lg-chip, .lg-icon):active {
+  transform: scale(0.955);
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(220%) brightness(1.26);
+  backdrop-filter: blur(var(--lg-blur)) saturate(220%) brightness(1.26);
+}
+
+/* ── icon button (mic) — no background fill, so a recording tint shows ───── */
+html[data-lg="on"] .lg-icon {
+  --lg-blur: 12px;
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(180%) brightness(1.06);
+  backdrop-filter: blur(var(--lg-blur)) saturate(180%) brightness(1.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -5px 9px -8px rgba(0, 0, 0, 0.35),
+    0 4px 12px -8px rgba(0, 0, 0, 0.6);
+  transition:
+    box-shadow 0.3s var(--ease-out-expo, ease),
+    transform 0.18s var(--ease-out-expo, ease),
+    backdrop-filter 0.3s ease,
+    border-color 0.3s ease;
+}
+
+/* ── command bar — the hero glass surface, strongest lensing ──────────────── */
+html[data-lg="on"] .lg-bar {
+  --lg-blur: 20px;
+  box-shadow:
+    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.48),
+    inset 0 10px 22px -14px rgba(255, 255, 255, 0.22),
+    inset 0 -14px 26px -16px rgba(0, 0, 0, 0.45),
+    inset 0 -1px 0.5px 0 rgba(0, 0, 0, 0.35),
+    0 14px 44px -18px rgba(0, 0, 0, 0.88);
+}
+html[data-lg="on"] .lg-bar:focus-within {
+  border-color: rgba(56, 232, 255, 0.38);
+  box-shadow:
+    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.55),
+    inset 0 10px 22px -14px rgba(255, 255, 255, 0.24),
+    inset 0 -14px 26px -16px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(56, 232, 255, 0.14),
+    0 16px 48px -18px rgba(0, 0, 0, 0.92);
+}
+
+/* ── user message bubble ─────────────────────────────────────────────────── */
+html[data-lg="on"] .lg-bubble {
+  --lg-blur: 10px;
+}
+
+/* ── slide-over + transcript panels — frosted glass (REGULAR) ────────────
+   Kept fairly opaque (≈0.74–0.82): a slide-over sits over a dark modal scrim,
+   so a too-translucent dark panel would blend into the scrim and lose its
+   content. Adaptive tint + a faint cyan left-edge lens. */
+html[data-lg="on"] .lg-panel {
+  --lg-blur: 26px;
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(190%) brightness(1.05) contrast(1.04);
+  backdrop-filter: blur(var(--lg-blur)) saturate(190%) brightness(1.05) contrast(1.04);
+  background:
+    radial-gradient(120% 55% at 50% -8%, rgba(255, 255, 255, 0.09), transparent 55%),
+    linear-gradient(180deg, rgba(30, 33, 40, 0.74), rgba(13, 15, 20, 0.82));
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.16),
+    inset 1px 0 0.5px 0 rgba(198, 240, 255, 0.18),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.3),
+    -20px 0 56px -28px rgba(0, 0, 0, 0.92);
+}
+
+/* ── CLEAR variant — more transparent, for media-rich context (over the Core)
+   Per Apple, Clear has minimal adaptation and should pair with a dimming layer;
+   here the panel keeps a soft inner dim so the conversation stays readable while
+   the living Core glows and refracts through it. */
+html[data-lg="on"] .lg-clear {
+  background:
+    radial-gradient(120% 55% at 50% -8%, rgba(255, 255, 255, 0.08), transparent 55%),
+    linear-gradient(180deg, rgba(12, 14, 18, 0.46), rgba(6, 7, 10, 0.56));
+}
+
+/* ── accent glass (send button) — tinted cyan lens ───────────────────────── */
+html[data-lg="on"] .lg-accent {
+  --lg-blur: 8px;
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(170%);
+  backdrop-filter: blur(var(--lg-blur)) saturate(170%);
+  background: linear-gradient(180deg, rgba(120, 244, 255, 0.95), rgba(18, 174, 207, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow:
+    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -3px 7px -2px rgba(0, 40, 60, 0.45),
+    0 0 26px -4px var(--color-accent-glow, rgba(56, 232, 255, 0.5)),
+    0 8px 20px -10px rgba(0, 0, 0, 0.6);
+}
+html[data-lg="on"] .lg-accent:disabled {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+/* ── lensing/refraction — the backdrop bends & twists (the "liquid" part) ──
+   Layered last so it wins the backdrop-filter property on .lg-bar / .lg-panel
+   (equal specificity → later source wins). Drop the `lg-refract` class from any
+   element to disable refraction there without touching the rest of the glass.
+   `-webkit-backdrop-filter` omits url() so Safari still gets a clean frost. */
+html[data-lg="on"] .lg-refract {
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(190%) brightness(1.08) contrast(1.05);
+  backdrop-filter: blur(var(--lg-blur)) saturate(190%) brightness(1.06) contrast(1.05) url(#lg-refraction);
+}
+
+/* ── graceful fallback where backdrop-filter is unsupported ───────────────── */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html[data-lg="on"] :is(.lg, .lg-bar, .lg-bubble) {
+    background: linear-gradient(180deg, rgba(22, 24, 29, 0.92), rgba(10, 11, 14, 0.94));
+  }
+  html[data-lg="on"] :is(.lg-panel, .lg-clear) {
+    background: rgba(11, 12, 16, 0.96);
+  }
+}
+
+/* ── respect reduced motion (transitions/press are also nulled globally) ──── */
+@media (prefers-reduced-motion: reduce) {
+  html[data-lg="on"] :is(.lg, .lg-bar, .lg-panel, .lg-accent, .lg-icon, .lg-bubble) {
+    transition: none;
+  }
+  html[data-lg="on"] :is(.lg-chip, .lg-icon):active {
+    transform: none;
+  }
+}
